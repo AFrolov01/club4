@@ -1,5 +1,4 @@
-
-import asyncio
+mport asyncio
 import logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, BotCommand
@@ -21,13 +20,13 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
+# Сначала подключаем роутеры — их хендлеры будут проверяться первыми
 dp.include_router(clan_router)
 dp.include_router(duel_router)
 
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    # Запоминаем групповой чат
     if message.chat.type in ("group", "supergroup"):
         await save_group_chat(message.chat.id)
 
@@ -46,7 +45,8 @@ async def cmd_start(message: Message):
     )
 
 
-@dp.message(F.chat.type.in_({"group", "supergroup"}))
+# Этот хендлер должен быть ПОСЛЕДНИМ — ловит только обычные сообщения, не команды
+@dp.message(F.chat.type.in_({"group", "supergroup"}), F.text.startswith("/") == False)
 async def track_group(message: Message):
     """Запоминаем ID группы из любого сообщения."""
     await save_group_chat(message.chat.id)
