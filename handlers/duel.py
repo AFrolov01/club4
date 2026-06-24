@@ -12,7 +12,7 @@ from db.duel_queries import (
     get_duel, get_active_duel_for_user, create_session,
     get_active_session_for_user, update_session,
     mark_player_done, decrement_attempts, get_next_player,
-    set_duel_status
+    set_duel_status, add_to_queue, get_queue
 )
 from game.mines import (
     generate_field, get_current_multiplier, get_next_multipliers_str,
@@ -78,6 +78,13 @@ async def cmd_minduel(message: Message):
     duel = await get_active_duel_for_user(user_id)
     if not duel:
         await message.answer("⏳ Сейчас нет активной дуэли для тебя.")
+        return
+
+    # Проверяем, не сыграл ли уже в этой дуэли
+    player_num = 1 if duel["player1_id"] == user_id else 2
+    done_col = f"player{player_num}_done"
+    if duel.get(done_col) == 1:
+        await message.answer("✅ Ты уже сыграл в этой дуэли. Жди следующей!")
         return
 
     # Проверяем не играл ли уже
@@ -288,3 +295,28 @@ async def _mark_done_and_check(duel: dict, user_id: int, clan_id: int):
     player_num = 1 if duel["player1_id"] == user_id else 2
     await decrement_attempts(clan_id, user_id)
     await mark_player_done(duel["id"], player_num)
+
+    # Проверяем, есть ли ещё игроки в очереди этого клана
+    # Если да — передаём попытку следующему
+    queue = await get_queue(clan_id)
+    if queue:
+        next_player = queue[0]
+        # Добавляем 1 попытку следующему игроку (передача хода)
+        await add_to_queue(clan_id, next_player["user_id"], attempts=1)
+        # Уведомляем в группу
+        # (опционально, можно убрать если спамит)
+        # duel_chat = duel.get("chat_id")
+        # if duel_chat:
+        #     pass  # уведомление о передаче хода
+
+
+@router.message(Command("reset"))
+async def cmd_reset(message: Message):
+    """Сбрасывает зависшие игры (для теста)."""
+    user_id = message.from_user.id
+    session = await get_active_session_for_user(user_id)
+    if session:
+        await update_session(session["id"], status="lost")
+        await message.answer("❌ Зависшая игра сброшена.")
+    else:
+        await message.answer("Нет активных игр.")
