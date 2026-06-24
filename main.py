@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# Сначала подключаем роутеры — их хендлеры будут проверяться первыми
 dp.include_router(clan_router)
 dp.include_router(duel_router)
 
@@ -45,8 +44,17 @@ async def cmd_start(message: Message):
     )
 
 
-# Этот хендлер должен быть ПОСЛЕДНИМ — ловит только обычные сообщения, не команды
-@dp.message(F.chat.type.in_({"group", "supergroup"}), F.text.startswith("/") == False)
+@dp.message(Command("cancel"))
+async def cmd_cancel(message: Message, state: FSMContext):
+    current = await state.get_state()
+    if current:
+        await state.clear()
+        await message.answer("❌ Действие отменено.")
+    else:
+        await message.answer("Нечего отменять.")
+
+
+@dp.message(F.chat.type.in_({"group", "supergroup"}), ~F.text.startswith("/"))
 async def track_group(message: Message):
     """Запоминаем ID группы из любого сообщения."""
     await save_group_chat(message.chat.id)
@@ -63,6 +71,7 @@ async def set_commands():
         BotCommand(command="kick", description="Кикнуть участника"),
         BotCommand(command="transferlead", description="Передать лидерство"),
         BotCommand(command="minduel", description="Начать дуэль-игру"),
+        BotCommand(command="cancel", description="Отменить действие"),
     ]
     await bot.set_my_commands(commands)
 
@@ -71,6 +80,9 @@ async def main():
     await init_db()
     await set_commands()
     logger.info("Бот запускается...")
+
+    # Сбрасываем webhook, если был активен
+    await bot.delete_webhook(drop_pending_updates=True)
 
     # Запускаем планировщик дуэлей в фоне
     asyncio.create_task(war_scheduler(bot))
