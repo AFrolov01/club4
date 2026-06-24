@@ -1,5 +1,5 @@
 # ===== НАСТРОЙКИ БОТА =====
-BOT_TOKEN = "8521185674:AAHZ4vVNeri7i6ThwNECyL1ufmMC24AF28w"   # Получи у @BotFather
+BOT_TOKEN = "8792736488:AAHQVD2N0xRsVjbZn7bFWnYQhVfV6FKr-_g"   # Получи у @BotFather
 ADMIN_IDS = [1979390272]            # Твой Telegram ID (узнай у @userinfobot)
 
 # Война кланов
