@@ -161,3 +161,16 @@ async def get_active_war() -> dict | None:
         async with db.execute("SELECT * FROM wars WHERE is_active=1 LIMIT 1") as cur:
             row = await cur.fetchone()
             return dict(row) if row else None
+async def delete_clan(clan_id: int, user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT creator_id FROM clans WHERE id = ?", (clan_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if not row or row[0] != user_id:
+                return False
+        
+        await db.execute("DELETE FROM clan_members WHERE clan_id = ?", (clan_id,))
+        await db.execute("DELETE FROM clans WHERE id = ?", (clan_id,))
+        await db.commit()
+        return True
