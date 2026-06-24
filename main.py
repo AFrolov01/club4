@@ -3,6 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, BotCommand
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
 
 from config import BOT_TOKEN
