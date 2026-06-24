@@ -55,12 +55,6 @@ async def cmd_cancel(message: Message, state: FSMContext):
         await message.answer("Нечего отменять.")
 
 
-#@dp.message(F.chat.type.in_({"group", "supergroup"}), ~F.text.startswith("/"))
-#async def track_group(message: Message):
-    """Запоминаем ID группы из любого сообщения."""
-   # await save_group_chat(message.chat.id)
-
-
 async def set_commands():
     commands = [
         BotCommand(command="start", description="Начало работы"),
@@ -83,10 +77,8 @@ async def main():
     await set_commands()
     logger.info("Бот запускается...")
 
-    # Сбрасываем webhook, если был активен
     await bot.delete_webhook(drop_pending_updates=True)
 
-    # Запускаем планировщик дуэлей в фоне
     asyncio.create_task(war_scheduler(bot))
 
     await dp.start_polling(bot)
