@@ -55,10 +55,10 @@ async def cmd_cancel(message: Message, state: FSMContext):
         await message.answer("Нечего отменять.")
 
 
-@dp.message(F.chat.type.in_({"group", "supergroup"}), ~F.text.startswith("/"))
-async def track_group(message: Message):
+#@dp.message(F.chat.type.in_({"group", "supergroup"}), ~F.text.startswith("/"))
+#async def track_group(message: Message):
     """Запоминаем ID группы из любого сообщения."""
-    await save_group_chat(message.chat.id)
+   # await save_group_chat(message.chat.id)
 
 
 async def set_commands():
