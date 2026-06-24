@@ -68,6 +68,7 @@ async def set_commands():
         BotCommand(command="minduel", description="Начать дуэль-игру"),
         BotCommand(command="cancel", description="Отменить действие"),
         BotCommand(command="deleteclan", description="Удалить клан (лидер)"),
+        BotCommand(command="reset", description="Сбросить зависшую игру"),
     ]
     await bot.set_my_commands(commands)
 
