@@ -161,23 +161,3 @@ async def get_active_war() -> dict | None:
         async with db.execute("SELECT * FROM wars WHERE is_active=1 LIMIT 1") as cur:
             row = await cur.fetchone()
             return dict(row) if row else None
-            async def delete_clan(clan_id: int, creator_id: int) -> bool:
-    """
-    Удаляет клан и всех его участников.
-    Возвращает True если удаление прошло успешно.
-    Работает только если creator_id совпадает с создателем клана.
-    """
-    async with aiosqlite.connect(DB_PATH) as db:
-        # Сначала исключаем всех участников
-        await db.execute(
-            "DELETE FROM clan_members WHERE clan_id = ?",
-            (clan_id,)
-        )
-        # Удаляем сам клан (только если это действительно создатель)
-        cursor = await db.execute(
-            "DELETE FROM clans WHERE id = ? AND creator_id = ?",
-            (clan_id, creator_id)
-        )
-        await db.commit()
-        return cursor.rowcount > 0
-
