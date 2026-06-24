@@ -296,19 +296,18 @@ async def _mark_done_and_check(duel: dict, user_id: int, clan_id: int):
     await decrement_attempts(clan_id, user_id)
     await mark_player_done(duel["id"], player_num)
 
-    # Проверяем, есть ли ещё игроки в очереди этого клана
-    # Если да — передаём попытку следующему
-    queue = await get_queue(clan_id)
-    if queue:
-        next_player = queue[0]
-        # Добавляем 1 попытку следующему игроку (передача хода)
-        await add_to_queue(clan_id, next_player["user_id"], attempts=1)
-        # Уведомляем в группу
-        # (опционально, можно убрать если спамит)
-        # duel_chat = duel.get("chat_id")
-        # if duel_chat:
-        #     pass  # уведомление о передаче хода
-
+    # Передаём ход следующему игроку в клане
+    from game.matchmaking import pass_turn_to_next
+    next_id = await pass_turn_to_next(clan_id, user_id)
+    
+    # Если оба игрока сыграли — завершаем дуэль
+    duel_updated = await get_duel(duel["id"])
+    if duel_updated and duel_updated["player1_done"] == 1 and duel_updated["player2_done"] == 1:
+        await set_duel_status(duel["id"], "completed")
+        # Уведомляем в группу о завершении дуэли
+        if duel_updated.get("chat_id"):
+            # Можно добавить уведомление
+            pass
 
 @router.message(Command("reset"))
 async def cmd_reset(message: Message):
