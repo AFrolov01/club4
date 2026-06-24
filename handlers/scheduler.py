@@ -31,7 +31,7 @@ async def war_scheduler(bot: Bot):
             await _tick(bot)
         except Exception as e:
             logger.error(f"Ошибка планировщика: {e}")
-            await asyncio.sleep(60)  # Проверяем каждую минуту
+        await asyncio.sleep(60)  # Проверяем каждую минуту
 
 
 
