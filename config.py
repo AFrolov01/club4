@@ -5,7 +5,7 @@ ADMIN_IDS = [1979390272]            # Твой Telegram ID (узнай у @useri
 # Война кланов
 WAR_DURATION_DAYS = 30             # Длительность войны в днях
 STARTING_AL = 100                  # Стартовые очки каждого клана (Al)
-DUEL_INTERVAL_HOURS = 48           # Интервал между дуэлями (часов)
+DUEL_INTERVAL_HOURS = 0.016           # Интервал между дуэлями (часов)
 
 # Игра мины
 FIELD_SIZE = 5                     # Размер поля 5x5
