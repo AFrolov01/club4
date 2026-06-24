@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from db.clan_queries import (
     create_clan, get_all_clans, get_clan_by_id, get_user_clan,
     get_clan_members, join_clan, leave_clan, kick_member,
-    transfer_leadership, get_active_war
+    transfer_leadership, get_active_war, delete_clan
 )
 
 router = Router()
@@ -33,6 +33,11 @@ async def cmd_create_clan(message: Message, state: FSMContext):
 
 @router.message(CreateClanFSM.waiting_name)
 async def fsm_clan_name(message: Message, state: FSMContext):
+    if message.text and message.text.startswith("/"):
+        await state.clear()
+        await message.answer("❌ Создание клана отменено. Напиши /createclan чтобы начать заново.")
+        return
+    
     name = message.text.strip()
     if len(name) < 2 or len(name) > 32:
         await message.answer("❌ Название должно быть от 2 до 32 символов. Попробуй ещё раз:")
@@ -65,6 +70,11 @@ async def fsm_clan_skip_avatar(call: CallbackQuery, state: FSMContext):
 
 @router.message(CreateClanFSM.waiting_deviz)
 async def fsm_clan_deviz(message: Message, state: FSMContext):
+    if message.text and message.text.startswith("/"):
+        await state.clear()
+        await message.answer("❌ Создание клана отменено. Напиши /createclan чтобы начать заново.")
+        return
+    
     deviz = message.text.strip()
     if deviz == "-":
         deviz = ""
@@ -85,7 +95,6 @@ async def fsm_clan_deviz(message: Message, state: FSMContext):
         await message.answer("❌ Клан с таким названием уже существует. Попробуй другое имя.")
         return
 
-    # Автовступление создателя
     await join_clan(message.from_user.id, clan_id, message.from_user.username or "", message.from_user.full_name)
 
     await message.answer(
@@ -100,6 +109,10 @@ async def fsm_clan_deviz(message: Message, state: FSMContext):
 
 @router.message(Command("join"))
 async def cmd_join(message: Message, state: FSMContext):
+    current = await state.get_state()
+    if current:
+        await state.clear()
+    
     existing = await get_user_clan(message.from_user.id)
     if existing:
         await message.answer(f"⚠️ Ты уже в клане <b>{existing['name']}</b>.", parse_mode="HTML")
@@ -110,8 +123,13 @@ async def cmd_join(message: Message, state: FSMContext):
     if not clans:
         await message.answer("😔 Пока нет ни одного клана. Создай первый: /createclan")
         return
+    
+    # Сохраняем данные для навигации
     await state.update_data(join_index=0, join_clans=[c["id"] for c in clans])
-    await _show_clan_card(message, clans[0], 0, len(clans))
+    
+    # Отправляем первое сообщение и сохраняем его ID
+    msg = await _show_clan_card(message, clans[0], 0, len(clans))
+    await state.update_data(join_message_id=msg.message_id, join_chat_id=msg.chat.id)
 
 
 async def _show_clan_card(target, clan: dict, idx: int, total: int):
@@ -129,19 +147,24 @@ async def _show_clan_card(target, clan: dict, idx: int, total: int):
         InlineKeyboardButton(text="➡️", callback_data=f"join_nav_{idx+1}"),
     ]])
 
-    if clan.get("avatar_file_id"):
-        if hasattr(target, "answer_photo"):
-            await target.answer_photo(clan["avatar_file_id"], caption=text, parse_mode="HTML", reply_markup=kb)
+    if isinstance(target, Message):
+        # Первый вызов — отправляем новое сообщение
+        if clan.get("avatar_file_id"):
+            return await target.answer_photo(clan["avatar_file_id"], caption=text, parse_mode="HTML", reply_markup=kb)
         else:
-            await target.answer(text, parse_mode="HTML", reply_markup=kb)
+            return await target.answer(text, parse_mode="HTML", reply_markup=kb)
     else:
-        if hasattr(target, "edit_text"):
+        # Редактируем существующее сообщение
+        if clan.get("avatar_file_id"):
             try:
-                await target.edit_text(text, parse_mode="HTML", reply_markup=kb)
+                return await target.edit_media(
+                    media=InputMediaPhoto(media=clan["avatar_file_id"], caption=text, parse_mode="HTML"),
+                    reply_markup=kb
+                )
             except Exception:
-                await target.answer(text, parse_mode="HTML", reply_markup=kb)
+                await target.edit_text(text, parse_mode="HTML", reply_markup=kb)
         else:
-            await target.answer(text, parse_mode="HTML", reply_markup=kb)
+            await target.edit_text(text, parse_mode="HTML", reply_markup=kb)
 
 
 @router.callback_query(F.data.startswith("join_nav_"))
@@ -233,6 +256,30 @@ async def cmd_leave(message: Message):
             return
     await leave_clan(message.from_user.id)
     await message.answer(f"Ты вышел из клана <b>{clan['name']}</b>.", parse_mode="HTML")
+
+
+# ===== УДАЛЕНИЕ КЛАНА =====
+
+@router.message(Command("deleteclan"))
+async def cmd_delete_clan(message: Message):
+    clan = await get_user_clan(message.from_user.id)
+    if not clan:
+        await message.answer("😔 Ты не состоишь ни в одном клане.")
+        return
+    if clan["creator_id"] != message.from_user.id:
+        await message.answer("⛔ Только лидер клана может удалить клан.")
+        return
+    
+    members = await get_clan_members(clan["id"])
+    if len(members) > 1:
+        await message.answer("⚠️ Нельзя удалить клан, в котором есть другие участники. Сначала кикни всех через /kick.")
+        return
+    
+    ok = await delete_clan(clan["id"], message.from_user.id)
+    if ok:
+        await message.answer(f"💥 Клан <b>{clan['name']}</b> удалён.", parse_mode="HTML")
+    else:
+        await message.answer("❌ Не удалось удалить клан.")
 
 
 # ===== КИК =====
